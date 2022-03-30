@@ -1,22 +1,24 @@
 from django.db import models
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.dispatch import receiver
+from django.core.validators import validate_email
 from django.db.models.signals import post_save
+from django.utils.translation import gettext_lazy as _
+
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True
-    )
+    User._meta.get_field('email')._unique = True
 
-    phone_number = models.CharField(max_length=10)
+    phone_number = PhoneNumberField(blank=True, unique=True)
 
-    profile_pic = models.ImageField(upload_to="images", default="")
+    profile_pic = models.ImageField(upload_to="images", default="avatar.svg")
 
     def __str__(self) -> str:
-        return self.user.username
+        return f"{self.user.username}"
 
     @receiver(post_save, sender=User)
     def update_profile_signal(sender, instance, created, **kwargs):
@@ -26,16 +28,16 @@ class Profile(models.Model):
     @receiver(post_save, sender=User)
     def save_profile(sender, instance, **kwargs):
         instance.profile.save()
-    
-    def phone_validation(self, phone_number):
-
-        if phone_number is not None:
-            pass
 
     def clean(self) -> None:
-        self.phone_validation(self.phone_number)
+        # validate_email(self.email)
         return super().clean()
     
     def save(self, *args, **kwargs):
-        self.full_clean()
+        print(self.user.username)
+        print(self.user.password)
+        print(self.user.email)
+        print(self.phone_number)
+        print(self.profile_pic)
+        self.clean()
         return super().save(*args, **kwargs)
