@@ -36,11 +36,14 @@ class Event(models.Model):
         return f"{self.title} - {self.date_time_start}"
 
     def clean(self) -> None:
+        if self.title is None or self.title == "":
+            raise ValidationError("title cannot be blank")
+
         validate_date_time(self.date_time_start, self.date_time_end)
         return super().clean()
     
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         return super().save(*args, **kwargs)
 
 
@@ -66,5 +69,5 @@ class PossibleMeeting(models.Model):
         return super().clean()
     
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         return super().save(*args, **kwargs)
