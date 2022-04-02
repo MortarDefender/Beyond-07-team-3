@@ -37,12 +37,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'phonenumber_field',
     'main.apps.MainConfig',
     'users.apps.UsersConfig',
     'events.apps.EventsConfig',
     'event_file.apps.EventFileConfig',
-    'reminder.apps.ReminderConfig',
+    'reminders.apps.RemindersConfig',
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -52,7 +55,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'users.profile_middleware.ProfileMiddleware'
 ]
 
 ROOT_URLCONF = 'lets_meet.urls'
@@ -123,7 +125,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT =  BASE_DIR / "media"  # os.path.join(BASE_DIR, 'media')
 MEDIA_URL = "/media/"
 
 # Default primary key field type
