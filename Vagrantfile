@@ -10,7 +10,8 @@ Vagrant.configure("2") do |config|
   config.vm.network(
     "forwarded_port", guest: 8000, host: 8000, host_ip: "127.0.0.1"
   )
-  
+
   config.vm.provision "shell", path: "bootstrap.sh", privileged: false
+  config.vm.provision "shell", path: "create_alias.sh", privileged: true
 
 end
