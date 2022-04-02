@@ -1,105 +1,77 @@
 import pytest
-from django.db import IntegrityError
-from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from phonenumber_field.phonenumber import PhoneNumber
 
-from .models import Profile
+from . import models
 
 
-PHONE_NUM = "+972544601142"
+NAME = "user"
 EMAIL = "user@gmail.com"
 PASSWORD = "AdminU$er123"
-USERNAME = "user1"
-PROFILE_PIC = "avatar.svg"
-FIRSTNAME = "mr"
-LASTNAME = "user"
+PHONE_NUM = "+972544651892"
+
+MISSING_REGION = "Missing or invalid default region."
+NOT_VALID_PHONE = "The phone number entered is not valid."
+NOT_INTERPRETED = "Could not interpret numbers after plus-sign."
+NOT_PHONE_NUMBER = "The string supplied did not seem to be a phone number."
+NAME_LENGTH_ERROR = "Ensure this value has at most 30 characters."
+EMAIL_ERROR = "Email is not valid"
 
 
 @pytest.fixture
-def new_user():
-    return User(username=USERNAME, first_name=FIRSTNAME, last_name=LASTNAME, password=PASSWORD, email=EMAIL)
+def user0():
+    return models.User(email=EMAIL, phone_number=PHONE_NUM, password=PASSWORD, username=NAME)
 
 
 @pytest.fixture
-def new_profile(new_user):
-    return Profile(user=new_user, phone_number=PHONE_NUM, profile_pic=PROFILE_PIC)
+def persist_user(db, user0):
+    user0.save()
+    return user0
 
 
 @pytest.mark.django_db()
-def test_profile(new_profile):
-    new_profile.user.save()
-
-    assert new_profile.phone_number == PHONE_NUM
-    assert new_profile.user in User.objects.all()
-    assert new_profile.user.profile in Profile.objects.all()
+def test_persist_user(persist_user):
+    assert persist_user in models.User.objects.all()
 
 
-# Check if the user is saved in the database
 @pytest.mark.django_db()
-def test_persist_user(new_user):
-    new_user.save()
-    assert new_user in User.objects.all()
-    assert new_user.profile in Profile.objects.all()
+def test_delete_user(persist_user):
+    persist_user.delete()
 
 
-# Check that the user values are the same as the user inputs.
+def test_new_user(user0):
+    assert user0.email == EMAIL
+    assert user0.phone_number.as_e164 == PHONE_NUM
+    assert user0.username == NAME
+    assert user0.profile_pic == 'images/profile_pic.svg'
+    assert user0.password == PASSWORD
+
+
+def create_user(email, phone_number, password, username):
+    return models.User(email=email, phone_number=phone_number, password=password, username=username)
+
+
 @pytest.mark.django_db()
-def test_new_user(new_user):
-    assert new_user.username == USERNAME
-    assert new_user.first_name == FIRSTNAME
-    assert new_user.last_name == LASTNAME
-    assert new_user.password == PASSWORD
-    assert new_user.email == EMAIL
-    new_user.save()  # Profile create just after save user
-    # assert new_user.profile.phone_number == ""
-    assert new_user.profile.profile_pic == 'avatar.svg'
+@pytest.mark.parametrize("email, phone_num, password, username, excpected_error", [
+    (EMAIL, "05111111111", PASSWORD, NAME, MISSING_REGION),
+    (EMAIL, "++97255347", PASSWORD, NAME, NOT_VALID_PHONE),
+    (EMAIL, "+978509154161", PASSWORD, NAME, NOT_INTERPRETED),
+    (EMAIL, "+9725091541614", PASSWORD, NAME, NOT_VALID_PHONE),
+    (EMAIL, "05hbjhbwfh", PASSWORD, NAME, NOT_PHONE_NUMBER),
+    ("jnkjn;lk", PHONE_NUM, PASSWORD, NAME, EMAIL_ERROR),
+    ("user@", PHONE_NUM, PASSWORD, NAME, EMAIL_ERROR),
+    ("user@com", PHONE_NUM, PASSWORD, NAME, EMAIL_ERROR),
+    (EMAIL, PHONE_NUM, PASSWORD, "agyT02!@9#"*15, NAME_LENGTH_ERROR),
+    (EMAIL, PHONE_NUM, PASSWORD, "16%$-7jkd@!?"*15, NAME_LENGTH_ERROR)
+])
+def test_invalid_user_values(email, phone_num, password, username, excpected_error):
+    with pytest.raises(Exception, match=excpected_error):
+        phone_number = PhoneNumber.from_string(phone_number=phone_num)
+        user = create_user(email, phone_number, password, username)
+        user.save()
 
 
-# Check if the user was deleted from the database
-@pytest.mark.django_db()
-def test_delete_user(new_user):
-    new_user.save()
-    new_user.delete()
-    assert new_user not in User.objects.all()
-    assert new_user.profile not in Profile.objects.all()
-
-
-# In this test we delete only the profile part, and check if the profile was deleted and not the whole user
-@pytest.mark.django_db()
-def test_delete_profile(new_user):
-    new_user.save()
-    new_user.profile.delete()
-    assert new_user in User.objects.all()
-    assert new_user.profile not in Profile.objects.all()
-
-
-# Check invalid email
 @pytest.mark.django_db
-def test_validate_email_addr():
-    with pytest.raises(ValidationError):
-        user = User(username=USERNAME,
-                    first_name=FIRSTNAME,
-                    last_name=LASTNAME,
-                    password=PASSWORD,
-                    email="check")
-        user.full_clean()
-
-
-# Test for unique username
-@pytest.mark.django_db
-def test_unique_username():
-    with pytest.raises(IntegrityError):
-        user1 = User(
-                    username="test",
-                    first_name=FIRSTNAME,
-                    last_name=LASTNAME,
-                    password=PASSWORD,
-                    email=EMAIL)
-        user2 = User(
-                    username="test",
-                    first_name=FIRSTNAME,
-                    last_name=LASTNAME,
-                    password=PASSWORD,
-                    email="test@gmail.com")
-        user1.save()
-        user2.save()
+def test_user_existence():
+    assert models.User.objects.get(username="testUser1")
+    assert models.User.objects.get(username="testUser2")
+    assert models.User.objects.get(username="testUser3")
